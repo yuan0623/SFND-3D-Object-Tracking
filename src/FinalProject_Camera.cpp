@@ -150,15 +150,35 @@ int main(int argc, const char *argv[])
 
         // extract 2D keypoints from current image
         vector<cv::KeyPoint> keypoints; // create empty feature list for current image
-        string detectorType = "SHITOMASI";
+        string detectorType = "FAST";
 
         if (detectorType.compare("SHITOMASI") == 0)
         {
             detKeypointsShiTomasi(keypoints, imgGray, false);
         }
-        else
+        else if (detectorType.compare("HARRIS") == 0)
         {
-            //...
+            detKeypointsHarris(keypoints, imgGray, false);
+        }
+        else if (detectorType.compare("FAST") == 0)
+        {
+            detKeypointsFAST(keypoints, imgGray, false);
+        }
+        else if (detectorType.compare("BRISK") == 0)
+        {
+            detKeypointsBRISK(keypoints, imgGray, false);
+        }
+        else if (detectorType.compare("ORB") == 0)
+        {
+            detKeypointsORB(keypoints, imgGray, false);
+        }
+        else if (detectorType.compare("AKAZE") == 0)
+        {
+            detKeypointsAKAZE(keypoints, imgGray, false);
+        }
+        else if (detectorType.compare("SIFT") == 0)
+        {
+            detKeypointsSIFT(keypoints, imgGray, false);
         }
 
         // optional : limit number of keypoints (helpful for debugging and learning)
