@@ -139,6 +139,22 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
 void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
     // ...
+
+    std::vector<cv::DMatch> kptMatches_bb;
+    for(auto kptMatch_itr = kptMatches.begin(); kptMatch_itr != kptMatches.end(); kptMatch_itr++)
+    {
+        auto current_kpt_index = kptMatch_itr->trainIdx;
+        auto previous_kpt_index = kptMatch_itr->queryIdx;
+        if(boundingBox.roi.contains(kptsCurr[current_kpt_index].pt) && boundingBox.roi.contains(kptsPrev[previous_kpt_index].pt))
+        {
+            kptMatches_bb.push_back(*kptMatch_itr);
+        }
+
+
+    }
+
+
+    boundingBox.kptMatches = kptMatches_bb;
 }
 
 
@@ -147,17 +163,139 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
                       std::vector<cv::DMatch> kptMatches, double frameRate, double &TTC, cv::Mat *visImg)
 {
     // ...
+    // compute distance ratios between all matched keypoints
+    vector<double> distRatios; // stores the distance ratios for all keypoints between curr. and prev. frame
+    for (auto it1 = kptMatches.begin(); it1 != kptMatches.end() - 1; ++it1)
+    { // outer kpt. loop
+
+        // get current keypoint and its matched partner in the prev. frame
+        cv::KeyPoint kpOuterCurr = kptsCurr.at(it1->trainIdx);
+        cv::KeyPoint kpOuterPrev = kptsPrev.at(it1->queryIdx);
+
+        for (auto it2 = kptMatches.begin() + 1; it2 != kptMatches.end(); ++it2)
+        { // inner kpt.-loop
+
+            double minDist = 100.0; // min. required distance
+
+            // get next keypoint and its matched partner in the prev. frame
+            cv::KeyPoint kpInnerCurr = kptsCurr.at(it2->trainIdx);
+            cv::KeyPoint kpInnerPrev = kptsPrev.at(it2->queryIdx);
+
+            // compute distances and distance ratios
+            double distCurr = cv::norm(kpOuterCurr.pt - kpInnerCurr.pt);
+            double distPrev = cv::norm(kpOuterPrev.pt - kpInnerPrev.pt);
+
+            if (distPrev > std::numeric_limits<double>::epsilon() && distCurr >= minDist)
+            { // avoid division by zero
+
+                double distRatio = distCurr / distPrev;
+                distRatios.push_back(distRatio);
+            }
+        } // eof inner loop over all matched kpts
+    }     // eof outer loop over all matched kpts
+
+    // only continue if list of distance ratios is not empty
+    if (distRatios.size() == 0)
+    {
+        TTC = NAN;
+        return;
+    }
+
+
+    // STUDENT TASK (replacement for meanDistRatio)
+    std::sort(distRatios.begin(), distRatios.end());
+    long medIndex = floor(distRatios.size() / 2.0);
+    double medDistRatio = distRatios.size() % 2 == 0 ? (distRatios[medIndex - 1] + distRatios[medIndex]) / 2.0 : distRatios[medIndex]; // compute median dist. ratio to remove outlier influence
+
+    double dT = 1 / frameRate;
+    TTC = -dT / (1 - medDistRatio);
+
+
+
 }
 
 
 void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                      std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)
 {
-    // ...
+
+    // auxiliary variables
+    double dT = 1/frameRate;        // time between two measurements in seconds
+    double laneWidth = 4.0; // assumed width of the ego lane
+
+    // find closest distance to Lidar points within ego lane
+    double minXPrev = 1e9, minXCurr = 1e9;
+    for (auto it = lidarPointsPrev.begin(); it != lidarPointsPrev.end(); ++it)
+    {
+
+        if (abs(it->y) <= laneWidth / 2.0)
+        { // 3D point within ego lane?
+            minXPrev = minXPrev > it->x ? it->x : minXPrev;
+        }
+    }
+
+    for (auto it = lidarPointsCurr.begin(); it != lidarPointsCurr.end(); ++it)
+    {
+
+        if (abs(it->y) <= laneWidth / 2.0)
+        { // 3D point within ego lane?
+            minXCurr = minXCurr > it->x ? it->x : minXCurr;
+        }
+    }
+
+    // compute TTC from both measurements
+    TTC = minXCurr * dT / (minXPrev - minXCurr);
+
 }
 
 
 void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
 {
     // ...
+    const int size_p = prevFrame.boundingBoxes.size();
+    const int size_c = currFrame.boundingBoxes.size();
+    //int count[size_p][size_c] = {};//initialize a null matrix with all values "0" of bounding boxes size prev x curr
+    cv::Mat count = cv::Mat::zeros(size_p, size_c, CV_32S);
+    for (auto matchpair : matches)
+    {
+        //take one matched keypoint at a time find the corresponsing point in current and prev frame
+        //once done check to which bounding box in prev and curr frame the point belong too
+        //once found store the value and increment the count
+        //cv::KeyPoint kpOuterPrev = kptsPrev.at(it1->queryIdx);
+        cv::KeyPoint prevkp1 = prevFrame.keypoints.at(matchpair.queryIdx);
+        auto prevkp = prevkp1.pt;//previous frame take keypint
+        cv::KeyPoint currkp1 = currFrame.keypoints.at(matchpair.trainIdx);
+        auto currkp = currkp1.pt;//current frame take keypint
+        for (int prevbb = 0; prevbb < size_p; prevbb++)//loop through all the prev frame bb
+        {
+            if (prevFrame.boundingBoxes[prevbb].roi.contains(prevkp))//check if the "previous frame take keypint" belongs to this box
+            {//if it does
+                for (int currbb = 0; currbb < size_c; currbb++)//loop through all the curr frame bb
+                {
+                    if (currFrame.boundingBoxes[currbb].roi.contains(currkp))//check if the "current frame take keypint" belongs to this box
+                    {//if it does
+                        //count[prevbb][currbb] = count[prevbb][currbb] + 1;//do a +1 if match is found
+                        count.at<int>(prevbb, currbb) = count.at<int>(prevbb, currbb) + 1;
+                    }
+                }
+            }
+        }
+    }
+    //for each prev bb find and compare the max count of corresponding curr bb.
+    //the curr bb with max no. of matches (max count) is the bbestmatch
+    for (int i = 0; i < size_p; i++)//loop through prev bounding box
+    {
+        int id = -1;//initialize id as the matrix starts from 0 x 0 we do not want to take 0 as the initializing value
+        int maxvalue = 0;//initialize max value
+        for (int j = 0; j < size_c; j++)//loop through all curr bounding boxes to see which prev + curr bb pair has maximum count
+        {
+            if (count.at<int>(i,j) > maxvalue)
+            {
+                maxvalue = count.at<int>(i,j);//input value for comparison
+                id = j;//id
+            }
+        }
+        bbBestMatches[i] = id;//once found for 1 prev bounding box; input the matched pair in bbBestMatches
+
+    }
 }
