@@ -47,3 +47,5 @@ check line 162-215 in `camFusion_student.cpp`.
 2. when the points are within the bounding box, but they are on the other object, the TTC tend to be wrong. This is because the outlier is not taken out.
 
 ### FP.6 Performance Evaluation 2
+1. The detector/descriptor combination has been listed [here](https://docs.google.com/spreadsheets/d/1uxNoxjb7APyzbs_wWEZHTDqBL1qvrkhQDfxyXEYi0ek/edit?usp=sharing). From this spread sheet, we know FAST/BRIEF combination is the best because it is the most efficient combination and the TTC is reasonalbly good.
+2. From the image sequcene provided, I didn't spot any faulty detection. I think the camera detection is robust in the provided case. However, if the lighting is too bad, then the camera-based TTC is going to be way off.
