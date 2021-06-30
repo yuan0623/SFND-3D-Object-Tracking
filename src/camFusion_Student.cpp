@@ -136,6 +136,12 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
 
 
 // associate a given bounding box with the keypoints it contains
+bool Compare(cv::DMatch a, cv::DMatch b) {
+    double d1 = a.distance; // f1 = g1 + h1
+    double d2 = b.distance; // f2 = g2 + h2
+    return d1 < d2;
+}
+
 void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
     // ...
@@ -152,7 +158,21 @@ void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint
 
 
     }
-
+    // filter out the outliers
+    std::sort(kptMatches_bb.begin(),kptMatches_bb.end(),Compare);
+    double med_dis = kptMatches_bb[floor(kptMatches_bb.size()/2)].distance;
+    double q1_dis = kptMatches_bb[floor(kptMatches_bb.size()/4)].distance;
+    double q3_dis = kptMatches_bb[floor(kptMatches_bb.size()/4*3)].distance;
+    double IQR_dis = q3_dis - q1_dis;
+    //std::cout<<"q1: "<<q1_dis<<" "<<"q3: "<<q3_dis<<" "<<IQR_dis<<std::endl;
+    for(auto kptMatche_bb_itr = kptMatches_bb.begin(); kptMatche_bb_itr !=kptMatches_bb.end();kptMatche_bb_itr++)
+    {
+        if(kptMatche_bb_itr->distance<q1_dis-IQR_dis && kptMatche_bb_itr->distance>q3_dis+IQR_dis)
+        {
+            std::cout<<"I found the outliers"<<std::endl;
+            kptMatches_bb.erase(kptMatche_bb_itr);
+        }
+    }
 
     boundingBox.kptMatches = kptMatches_bb;
 }
