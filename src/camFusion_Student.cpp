@@ -223,14 +223,17 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
     double dT = 1/frameRate;        // time between two measurements in seconds
     double laneWidth = 4.0; // assumed width of the ego lane
 
-    // find closest distance to Lidar points within ego lane
+    // find median of distance to Lidar points within ego lane
     double minXPrev = 1e9, minXCurr = 1e9;
+    std::vector<double> XPrev;
+    std::vector<double> XCur;
     for (auto it = lidarPointsPrev.begin(); it != lidarPointsPrev.end(); ++it)
     {
 
         if (abs(it->y) <= laneWidth / 2.0)
         { // 3D point within ego lane?
-            minXPrev = minXPrev > it->x ? it->x : minXPrev;
+            //minXPrev = minXPrev > it->x ? it->x : minXPrev;
+            XPrev.push_back(it->x);
         }
     }
 
@@ -239,12 +242,20 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
 
         if (abs(it->y) <= laneWidth / 2.0)
         { // 3D point within ego lane?
-            minXCurr = minXCurr > it->x ? it->x : minXCurr;
+            //minXCurr = minXCurr > it->x ? it->x : minXCurr;
+            XCur.push_back(it->x);
         }
     }
+    std::sort(XPrev.begin(),XPrev.end());
+    std::sort(XCur.begin(),XCur.end());
+    long medIndexPrev = floor(XPrev.size() / 2.0);
+    long medIndexCur = floor(XCur.size()/2.0);
+    double medPrev = XPrev.size() % 2 == 0 ? (XPrev[medIndexPrev - 1] + XPrev[medIndexPrev]) / 2.0 : XPrev[medIndexPrev]; // compute median of x in previous frame
+    double medCur = XCur.size() % 2 == 0 ? (XCur[medIndexCur - 1] + XCur[medIndexCur]) / 2.0 : XCur[medIndexCur]; // compute median of x in previous frame
+
 
     // compute TTC from both measurements
-    TTC = minXCurr * dT / (minXPrev - minXCurr);
+    TTC = medCur * dT / (medPrev - medCur);
 
 }
 
