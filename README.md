@@ -27,19 +27,20 @@
 ## rubric
 
 ### FP.1 Match 3D Objects
-
+The `matchBoundingBoxes` functon is implemented. 
+I take one matched keypoint at a time find the corresponsing point in current and prev frame, then I check which bounding box in prev and curr frame the point belong to, once found store the value and increment the count
 check line 252-301 in `camFusion_student.cpp`.
 
 ### FP.2 Compute Lidar-based TTC
-
+First, I find closest distance to Lidar points within ego lane, then I use the equation that I learned from the TTC section to compute the TTC.
 check line 218-249 in `camFusion_student.cpp`.
 
 ### FP.3 Associate Keypoint Correspondences with Bounding Boxes
-
+First, I take one match pair, then if the previous keypoint and current keypoint are within the same bounding box, then we add this match to a vector. After finishing the loop, I assign the obtained vector to `boundingBox.kptMatches`. 
 check line 139-158 in `camFusion_student.cpp`.
 
 ### FP.4 Compute Camera-based TTC
-
+This section is heavily based on the previous practice code. First I compute distance ratios between all matched keypoints, then I use median of computed distance ratio, and apply the equation I learned to compute TTC.
 check line 162-215 in `camFusion_student.cpp`.
 
 ### FP.5 Performance Evaluation 1
