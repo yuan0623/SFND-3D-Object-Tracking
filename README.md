@@ -29,24 +29,23 @@
 ### FP.1 Match 3D Objects
 The `matchBoundingBoxes` functon is implemented. 
 I take one matched keypoint at a time find the corresponsing point in current and prev frame, then I check which bounding box in prev and curr frame the point belong to, once found store the value and increment the count
-check line 252-301 in `camFusion_student.cpp`.
+check line 283-332 in `camFusion_student.cpp`.
 
 ### FP.2 Compute Lidar-based TTC
 First, I find closest distance to Lidar points within ego lane, then I use the equation that I learned from the TTC section to compute the TTC.
-check line 218-249 in `camFusion_student.cpp`.
+check line 238-280 in `camFusion_student.cpp`.
 
 ### FP.3 Associate Keypoint Correspondences with Bounding Boxes
-First, I take one match pair, then if the previous keypoint and current keypoint are within the same bounding box, then we add this match to a vector. After finishing the loop, I assign the obtained vector to `boundingBox.kptMatches`. 
-check line 139-158 in `camFusion_student.cpp`.
+First, I take one match pair, then if the previous keypoint and current keypoint are within the same bounding box, then we add this match to a vector. After finishing the loop, I assign the obtained vector to `boundingBox.kptMatches`. Then I filter out the outliers based on their distance.
+check line 145-178 in `camFusion_student.cpp`.
 
 ### FP.4 Compute Camera-based TTC
 This section is heavily based on the previous practice code. First I compute distance ratios between all matched keypoints, then I use median of computed distance ratio, and apply the equation I learned to compute TTC.
-check line 162-215 in `camFusion_student.cpp`.
+check line 182-235 in `camFusion_student.cpp`.
 
 ### FP.5 Performance Evaluation 1
-1. when there are points on the edge of the bounding box, the TTC tend to be wrong. This is because the bounding box does not represent the true shape of the object. The points on the edge may represent something else.
-2. when the points are within the bounding box, but they are on the other object, the TTC tend to be wrong. This is because the outlier is not taken out.
+Based on the given sequence, I don't spot the lidar measurement has any obvious faulty-measurement due to the robustness of my code. If you don't believe it, feel free to run the code. All TTC estimation is reasonable. 
 
 ### FP.6 Performance Evaluation 2
 1. The detector/descriptor combination has been listed [here](https://docs.google.com/spreadsheets/d/1uxNoxjb7APyzbs_wWEZHTDqBL1qvrkhQDfxyXEYi0ek/edit?usp=sharing). From this spread sheet, we know FAST/BRIEF combination is the best because it is the most efficient combination and the TTC is reasonalbly good.
-2. From the image sequcene provided, I didn't spot any faulty detection. I think the camera detection is robust in the provided case. However, if the lighting is too bad, then the camera-based TTC is going to be way off.
+2. From the image sequcene provided, I spot one faulty measurement. I think it's caused by too many faulty-match.
