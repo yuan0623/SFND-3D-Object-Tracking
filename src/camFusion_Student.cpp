@@ -134,11 +134,14 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
     }
 }
 
-
+struct toSort{
+    cv::DMatch DMatch;
+    double euclideanDistance;
+};
 // associate a given bounding box with the keypoints it contains
-bool Compare(cv::DMatch a, cv::DMatch b) {
-    double d1 = a.distance; // f1 = g1 + h1
-    double d2 = b.distance; // f2 = g2 + h2
+bool Compare(toSort a, toSort b) {
+    double d1 = a.euclideanDistance; // f1 = g1 + h1
+    double d2 = b.euclideanDistance; // f2 = g2 + h2
     return d1 < d2;
 }
 
@@ -147,35 +150,50 @@ void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint
     // ...
 
     std::vector<cv::DMatch> kptMatches_bb;
+    std::vector<toSort> toSortVec;
     for(auto kptMatch_itr = kptMatches.begin(); kptMatch_itr != kptMatches.end(); kptMatch_itr++)
     {
         auto current_kpt_index = kptMatch_itr->trainIdx;
         auto previous_kpt_index = kptMatch_itr->queryIdx;
         if(boundingBox.roi.contains(kptsCurr[current_kpt_index].pt) && boundingBox.roi.contains(kptsPrev[previous_kpt_index].pt))
         {
-            kptMatches_bb.push_back(*kptMatch_itr);
+            toSort myToSort;
+            myToSort.DMatch = *kptMatch_itr;
+            cv::KeyPoint kpInnerCurr = kptsCurr.at(current_kpt_index);
+            cv::KeyPoint kpInnerPrev = kptsPrev.at(previous_kpt_index);
+            myToSort.euclideanDistance = std::sqrt(std::pow((kpInnerCurr.pt.x - kpInnerPrev.pt.x),2)+std::pow((kpInnerCurr.pt.y - kpInnerPrev.pt.y),2));
+            toSortVec.push_back(myToSort);
+
         }
 
 
     }
     // filter out the outliers
-    std::sort(kptMatches_bb.begin(),kptMatches_bb.end(),Compare);
-    double med_dis = kptMatches_bb[floor(kptMatches_bb.size()/2)].distance;
-    double q1_dis = kptMatches_bb[floor(kptMatches_bb.size()/4)].distance;
-    double q3_dis = kptMatches_bb[floor(kptMatches_bb.size()/4*3)].distance;
+    std::sort(toSortVec.begin(),toSortVec.end(),Compare);
+
+    double med_dis = toSortVec[floor(kptMatches_bb.size()/2)].euclideanDistance;
+    double q1_dis = toSortVec[floor(kptMatches_bb.size()/4)].euclideanDistance;
+    double q3_dis = toSortVec[floor(kptMatches_bb.size()/4*3)].euclideanDistance;
     double IQR_dis = q3_dis - q1_dis;
     //std::cout<<"q1: "<<q1_dis<<" "<<"q3: "<<q3_dis<<" "<<IQR_dis<<std::endl;
-    for(auto kptMatche_bb_itr = kptMatches_bb.begin(); kptMatche_bb_itr !=kptMatches_bb.end();kptMatche_bb_itr++)
+    for(auto toSortVec_itr = toSortVec.begin(); toSortVec_itr !=toSortVec.end();toSortVec_itr++)
     {
-        if(kptMatche_bb_itr->distance<q1_dis-IQR_dis && kptMatche_bb_itr->distance>q3_dis+IQR_dis)
+        if(toSortVec_itr->euclideanDistance<q1_dis-IQR_dis && toSortVec_itr->euclideanDistance>q3_dis+IQR_dis)
         {
             std::cout<<"I found the outliers"<<std::endl;
-            kptMatches_bb.erase(kptMatche_bb_itr);
+
+
+        }
+        else
+        {
+            kptMatches_bb.push_back(toSortVec_itr->DMatch);
         }
     }
 
     boundingBox.kptMatches = kptMatches_bb;
+
 }
+
 
 
 // Compute time-to-collision (TTC) based on keypoint correspondences in successive images

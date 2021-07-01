@@ -44,8 +44,9 @@ This section is heavily based on the previous practice code. First I compute dis
 check line 182-235 in `camFusion_student.cpp`.
 
 ### FP.5 Performance Evaluation 1
-Based on the given sequence, I don't spot the lidar measurement has any obvious faulty-measurement due to the robustness of my code. If you don't believe it, feel free to run the code. All TTC estimation is reasonable. 
-
+![alt text](plot/lidar_ttc.png)
+Based on the given sequence, I think the faulty measurement is at frame 4. This is because there are points located on the other object rather than the car that is at front.
 ### FP.6 Performance Evaluation 2
+![alt text](plot/camera_ttc.png)
 1. The detector/descriptor combination has been listed [here](https://docs.google.com/spreadsheets/d/1uxNoxjb7APyzbs_wWEZHTDqBL1qvrkhQDfxyXEYi0ek/edit?usp=sharing). From this spread sheet, we know FAST/BRIEF combination is the best because it is the most efficient combination and the TTC is reasonalbly good.
-2. From the image sequcene provided, I spot one faulty measurement. I think it's caused by too many faulty-match.
+2. From the image sequcene provided, the faulty measurement is at frame 5. I think this is due to too many mismatched keypoints.
